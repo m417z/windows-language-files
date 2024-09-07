@@ -1,0 +1,46 @@
+diff --git a/upd02_get_manifests_from_updates.py b/upd02_get_manifests_from_updates.py
+index c684472..886eec7 100644
+--- a/upd02_get_manifests_from_updates.py
++++ b/upd02_get_manifests_from_updates.py
+@@ -23,7 +23,7 @@ class UpdateNotSupported(Exception):
+ 
+ def get_update_download_urls(download_uuid):
+     while True:
+-        url = (os.environ.get('UUP_GET_FILES_URL') or 'https://uup.rg-adguard.net/api/GetFiles?id={}&lang=en-us&edition=professional&txt=yes').format(download_uuid)
++        url = (os.environ.get('UUP_GET_FILES_URL') or 'https://uup.rg-adguard.net/api/GetFiles?id={}&edition=professional&txt=yes').format(download_uuid)
+         r = requests.get(url)
+ 
+         r.raise_for_status()
+@@ -74,6 +74,12 @@ def get_update_download_urls(download_uuid):
+         stem = Path(name_lower).stem
+         extension = Path(name_lower).suffix
+ 
++        if (
++            'Microsoft-Windows-Client-LanguagePack-Package'.lower() not in name_lower
++            or not name_lower.endswith('.esd')
++        ):
++            continue
++
+         # Skip metadata ESD files which contain partial content and can't be
+         # extracted with 7z.
+         if name_lower in [
+@@ -254,7 +260,9 @@ def extract_update_files(local_dir: Path):
+     # Extract ESD files.
+     esd_files = list(local_dir.glob('*.esd'))
+     for esd_file in esd_files:
+-        extract_dir = local_dir.joinpath(f'_extract_{next_extract_dir_num}')
++        # extract_dir = local_dir.joinpath(f'_extract_{next_extract_dir_num}')
++        extract_dir = local_dir.joinpath(f'{esd_file.stem}')
++        assert not extract_dir.exists()
+         print(f'Extracting {esd_file} to {extract_dir}')
+         next_extract_dir_num += 1
+ 
+@@ -272,6 +280,8 @@ def extract_update_files(local_dir: Path):
+         msu_extract(msu_file, extract_dir)
+         msu_file.unlink()
+ 
++    input('Press Enter to continue...')
++
+     # Starting with Windows 11, manifest files are compressed with the DCM v1
+     # format. Use SXSEXP to de-compress them: https://github.com/hfiref0x/SXSEXP
+     #
